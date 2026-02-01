@@ -95,8 +95,8 @@ system_movement :: proc(world: ^ecs.World, dt: f32) {
     for arch in q.archetypes {
         // Get strict component slices (SoA layout)
         // This is extremely CPU cache-friendly because data is contiguous
-        positions  := ecs.table(world, arch, Position)
-        velocities := ecs.table(world, arch, Velocity)
+        positions  := ecs.get_view(world, arch, Position)
+        velocities := ecs.get_view(world, arch, Velocity)
 
         // Iterate over entities within this archetype
         // #no_bounds_check is safe here because we iterate up to arch.len
@@ -125,9 +125,9 @@ system_render :: proc(world: ^ecs.World) {
     q := ecs.query(world, ecs.with(Position), ecs.with(Color), ecs.with(Radius))
 
     for arch in q.archetypes {
-        positions := ecs.table(world, arch, Position)
-        colors    := ecs.table(world, arch, Color)
-        radii     := ecs.table(world, arch, Radius)
+        positions := ecs.get_view(world, arch, Position)
+        colors    := ecs.get_view(world, arch, Color)
+        radii     := ecs.get_view(world, arch, Radius)
 
         #no_bounds_check for i in 0..<arch.len {
             rl.DrawCircleV(
