@@ -52,12 +52,20 @@ add :: proc {
     add_type,
     add_id,
     add_pair,
+    add_pair_type_type,
+    add_pair_id_id,
+    add_pair_type_id,
+    add_pair_id_type,
 }
 
 remove :: proc {
     remove_type,
     remove_id,
     remove_pair,
+    remove_pair_type_type,
+    remove_pair_id_id,
+    remove_pair_type_id,
+    remove_pair_id_type,
 }
 
 set :: proc {
@@ -65,6 +73,10 @@ set :: proc {
     add_type,
     add_id,
     set_pair,
+    set_pair_type_type,
+    set_pair_id_id,
+    set_pair_type_id,
+    set_pair_id_type,
 }
 
 get :: proc {
@@ -73,9 +85,13 @@ get :: proc {
 }
 
 has :: proc {
-    has_type,
+    has_type, 
     has_id,
     has_pair,
+    has_pair_type_type,
+    has_pair_id_id,
+    has_pair_type_id,
+    has_pair_id_type,
 }
 
 get_target :: proc {
@@ -95,10 +111,17 @@ get_components :: proc(world: ^World, entity: Entity) -> []Entity {
 }
 
 pair :: proc {
+    pair_type_type,
     pair_id_id,
     pair_type_id,
     pair_id_type,
-    pair_type_type,
+}
+
+@private
+pair_type_type :: #force_inline proc "contextless" ($Rel, $Tgt: typeid) -> Pair {
+    rel: typeid = Rel
+    tgt: typeid = Tgt
+    return Pair{ relation = rel, target = tgt }
 }
 
 @private
@@ -118,82 +141,142 @@ pair_id_type :: #force_inline proc "contextless" (r: Entity, $Tgt: typeid) -> Pa
     return Pair{ relation = r, target = tgt }
 }
 
-@private
-pair_type_type :: #force_inline proc "contextless" ($Rel, $Tgt: typeid) -> Pair {
-    rel: typeid = Rel
-    tgt: typeid = Tgt
-    return Pair{ relation = rel, target = tgt }
-}
-
-@private
-add_value :: proc(world: ^World, entity: Entity, value: $T) where T != Pair {
+@(private="file")
+add_value :: #force_inline proc(world: ^World, entity: Entity, value: $T) where T != Pair {
     val := value
     add_raw(world, entity, get_component_id(world, T), &val)
 }
 
-@private
-add_type :: proc(world: ^World, entity: Entity, $T: typeid) {
+@(private="file")
+add_type :: #force_inline proc(world: ^World, entity: Entity, $T: typeid) {
     add_raw(world, entity, get_component_id(world, T))
 }
 
-@private
-add_id :: proc(world: ^World, entity: Entity, id: Entity) {
+@(private="file")
+add_id :: #force_inline proc(world: ^World, entity: Entity, id: Entity) {
     add_raw(world, entity, id)
 }
 
-@private
-add_pair :: proc(world: ^World, entity: Entity, pair: Pair) {
+@(private="file")
+add_pair :: #force_inline proc(world: ^World, entity: Entity, pair: Pair) {
     add_raw(world, entity, pair_id(world, pair))
 }
 
-@private
-set_pair :: proc(world: ^World, entity: Entity, pair: Pair) {
-    rel := resolve_id(world, pair.relation)
-    tgt := resolve_id(world, pair.target)
+@(private="file")
+add_pair_type_type :: #force_inline proc(world: ^World, entity: Entity, $Rel, $Tgt: typeid) {
+    add_raw(world, entity, id_make_pair(
+        get_component_id(world, Rel),
+        get_component_id(world, Tgt),
+    ))
+}
 
+@(private="file")
+add_pair_id_id :: #force_inline proc(world: ^World, entity, rel, tgt: Entity) {
+    add_raw(world, entity, id_make_pair(rel, tgt))
+}
+
+@(private="file")
+add_pair_type_id :: #force_inline proc(world: ^World, entity: Entity, $Rel: typeid, tgt: Entity) {
+    add_raw(world, entity, id_make_pair(get_component_id(world, Rel), tgt))
+}
+
+@(private="file")
+add_pair_id_type :: #force_inline proc(world: ^World, entity, rel: Entity, $Tgt: typeid) {
+    add_raw(world, entity, id_make_pair(rel, get_component_id(world, Tgt)))
+}
+
+@(private="file")
+set_pair :: #force_inline proc(world: ^World, entity: Entity, pair: Pair) {
+    set_pair_id_id(world, entity,
+        resolve_id(world, pair.relation),
+        resolve_id(world, pair.target)
+    )
+}
+
+@(private="file")
+set_pair_type_type :: #force_inline proc(world: ^World, entity: Entity, $Rel, $Tgt: typeid) {
+    set_pair_id_id(world, entity, 
+        get_component_id(world, Rel), 
+        get_component_id(world, Tgt),
+    )
+}
+
+@(private="file")
+set_pair_id_id :: proc(world: ^World, entity, rel, tgt: Entity) {
     old_tgt, found := get_target_id(world, entity, rel)
     if found {
         if old_tgt == tgt do return
-
         remove_raw(world, entity, id_make_pair(rel, old_tgt))
     }
 
     add_raw(world, entity, id_make_pair(rel, tgt))
 }
 
-@private
-remove_type :: proc(world: ^World, entity: Entity, $T: typeid) {
-    id := get_component_id(world, T)
+@(private="file")
+set_pair_type_id :: #force_inline proc(world: ^World, entity: Entity, $Rel: typeid, tgt: Entity) {
+    set_pair_id_id(world, entity, get_component_id(world, Rel), tgt)
+}
+
+@(private="file")
+set_pair_id_type :: #force_inline proc(world: ^World, entity, rel: Entity, $Tgt: typeid) {
+    set_pair_id_id(world, entity, rel, get_component_id(world, Tgt))
+}
+
+@(private="file")
+remove_type :: #force_inline proc(world: ^World, entity: Entity, $T: typeid) {
+    remove_raw(world, entity, get_component_id(world, T))
+}
+
+@(private="file")
+remove_id :: #force_inline proc(world: ^World, entity: Entity, id: Entity) {
     remove_raw(world, entity, id)
 }
 
-@private
-remove_id :: proc(world: ^World, entity: Entity, id: Entity) {
-    remove_raw(world, entity, id)
-}
-
-@private
-remove_pair :: proc(world: ^World, entity: Entity, p: Pair) {
+@(private="file")
+remove_pair :: #force_inline proc(world: ^World, entity: Entity, p: Pair) {
     remove_raw(world, entity, pair_id(world, p))
 }
 
-@private
-get_component :: proc(world: ^World, entity: Entity, $T: typeid) -> ^T {
+@(private="file")
+remove_pair_type_type :: #force_inline proc(world: ^World, entity: Entity, $Rel, $Tgt: typeid) {
+    remove_raw(world, entity, id_make_pair(
+        get_component_id(world, Rel),
+        get_component_id(world, Tgt),
+    ))
+}
+
+@(private="file")
+remove_pair_id_id :: #force_inline proc(world: ^World, entity, rel, tgt: Entity) {
+    remove_raw(world, entity, id_make_pair(rel, tgt))
+}
+
+@(private="file")
+remove_pair_type_id :: #force_inline proc(world: ^World, entity: Entity, $Rel: typeid, tgt: Entity) {
+    remove_raw(world, entity, id_make_pair(get_component_id(world, Rel), tgt))
+}
+
+@(private="file")
+remove_pair_id_type :: #force_inline proc(world: ^World, entity, rel: Entity, $Tgt: typeid) {
+    remove_raw(world, entity, id_make_pair(rel, get_component_id(world, Tgt)))
+}
+
+@(private="file")
+get_component :: #force_inline proc(world: ^World, entity: Entity, $T: typeid) -> ^T {
     ptr := get_raw(world, entity, get_component_id(world, T))
     return (^T)(ptr)
 }
 
-@private
-get_id :: proc(world: ^World, entity: Entity, id: Entity) -> rawptr {
+@(private="file")
+get_id :: #force_inline proc(world: ^World, entity: Entity, id: Entity) -> rawptr {
     return get_raw(world, entity, id)
 }
 
-@private
-has_type :: proc(world: ^World, entity: Entity, $T: typeid) -> bool {
+@(private="file", require_results)
+has_type :: #force_inline proc(world: ^World, entity: Entity, $T: typeid) -> bool {
     return has_id(world, entity, get_component_id(world, T))
 }
 
-@private
+@(private="file", require_results)
 has_id :: proc(world: ^World, entity: Entity, id: Entity) -> bool {
     if !is_alive(world, entity) do return false
 
@@ -205,9 +288,32 @@ has_id :: proc(world: ^World, entity: Entity, id: Entity) -> bool {
     return found
 }
 
-@private
-has_pair :: proc(world: ^World, entity: Entity, p: Pair) -> bool {
+@(private="file", require_results)
+has_pair :: #force_inline proc(world: ^World, entity: Entity, p: Pair) -> bool {
     return has_id(world, entity, pair_id(world, p))
+}
+
+@(private="file", require_results)
+has_pair_type_type :: #force_inline proc(world: ^World, entity: Entity, $Rel, $Tgt: typeid) -> bool {
+    return has_id(world, entity, id_make_pair(
+        get_component_id(world, Rel),
+        get_component_id(world, Tgt),
+    ))
+}
+
+@(private="file", require_results)
+has_pair_id_id :: #force_inline proc(world: ^World, entity, rel, tgt: Entity) -> bool {
+    return has_id(world, entity, id_make_pair(rel, tgt))
+}
+
+@(private="file", require_results)
+has_pair_type_id :: #force_inline proc(world: ^World, entity: Entity, $Rel: typeid, tgt: Entity) -> bool {
+    return has_id(world, entity, id_make_pair(get_component_id(world, Rel), tgt))
+}
+
+@(private="file", require_results)
+has_pair_id_type :: #force_inline proc(world: ^World, entity, rel: Entity, $Tgt: typeid) -> bool {
+    return has_id(world, entity, id_make_pair(rel, get_component_id(world, Tgt)))
 }
 
 @private
@@ -266,7 +372,7 @@ id_pair_second :: #force_inline proc "contextless" (id: Entity) -> Entity {
 }
 
 @private
-get_target_type :: proc(world: ^World, entity: Entity, $Rel: typeid) -> (Entity, bool) {
+get_target_type :: #force_inline proc(world: ^World, entity: Entity, $Rel: typeid) -> (Entity, bool) {
     return get_target_id(world, entity, get_component_id(world, Rel))
 }
 

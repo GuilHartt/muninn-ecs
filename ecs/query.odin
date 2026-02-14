@@ -1,6 +1,5 @@
 package ecs
 
-import "core:fmt"
 import "core:hash"
 import "core:slice"
 import "core:mem/virtual"
@@ -29,12 +28,20 @@ with :: proc {
     with_type, 
     with_id,
     with_pair,
+    with_pair_type_type,
+    with_pair_id_id,
+    with_pair_type_id,
+    with_pair_id_type,
 }
 
 without :: proc { 
     without_type, 
     without_id,
     without_pair,
+    without_pair_type_type,
+    without_pair_id_id,
+    without_pair_type_id,
+    without_pair_id_type,
 }
 
 query :: proc(world: ^World, inputs: ..QueryTermInput) -> ^Query {
@@ -84,36 +91,76 @@ count_entites :: #force_inline proc "contextless" (query: ^Query) -> (count: int
     return
 }
 
-@private
-with_type :: #force_inline proc($T: typeid) -> QueryTermInput {
+@(private="file", require_results)
+with_type :: #force_inline proc "contextless" ($T: typeid) -> QueryTermInput {
     val: typeid = T
     return { Component(val), .With }
 }
 
-@private
-with_id :: #force_inline proc(id: Entity) -> QueryTermInput {
+@(private="file", require_results)
+with_id :: #force_inline proc "contextless" (id: Entity) -> QueryTermInput {
     return { Component(id), .With }
 }
 
-@private
-with_pair :: #force_inline proc(pair: Pair) -> QueryTermInput {
+@(private="file", require_results)
+with_pair :: #force_inline proc "contextless" (pair: Pair) -> QueryTermInput {
     return { pair, .With }
 }
 
-@private
-without_type :: #force_inline proc($T: typeid) -> QueryTermInput {
+@(private="file", require_results)
+with_pair_type_type :: #force_inline proc "contextless" ($Rel, $Tgt: typeid) -> QueryTermInput {
+    return { pair_type_type(Rel, Tgt), .With }
+}
+
+@(private="file", require_results)
+with_pair_id_id :: #force_inline proc "contextless" (rel, tgt: Entity) -> QueryTermInput {
+    return { pair_id_id(rel, tgt), .With }
+}
+
+@(private="file", require_results)
+with_pair_type_id :: #force_inline proc "contextless" ($Rel: typeid, tgt: Entity) -> QueryTermInput {
+    return { pair_type_id(Rel, tgt), .With }
+}
+
+@(private="file", require_results)
+with_pair_id_type :: #force_inline proc "contextless" (rel: Entity, $Tgt: typeid) -> QueryTermInput {
+    return { pair_id_type(rel, Tgt), .With }
+}
+
+@(private="file", require_results)
+without_type :: #force_inline proc "contextless" ($T: typeid) -> QueryTermInput {
     val: typeid = T
     return { Component(val), .Without }
 }
 
-@private
-without_id :: #force_inline proc(id: Entity) -> QueryTermInput {
+@(private="file", require_results)
+without_id :: #force_inline proc "contextless" (id: Entity) -> QueryTermInput {
     return { Component(id), .Without }
 }
 
-@private
-without_pair :: #force_inline proc(pair: Pair) -> QueryTermInput {
+@(private="file", require_results)
+without_pair :: #force_inline proc "contextless" (pair: Pair) -> QueryTermInput {
     return { pair, .Without }
+}
+
+@(private="file", require_results)
+without_pair_type_type :: #force_inline proc "contextless" ($Rel, $Tgt: typeid) -> QueryTermInput {
+    return { pair_type_type(Rel, Tgt), .Without }
+}
+
+@(private="file", require_results)
+without_pair_id_id :: #force_inline proc "contextless" (rel, tgt: Entity) -> QueryTermInput {
+    return { pair_id_id(rel, tgt), .Without }
+}
+
+@(private="file", require_results)
+without_pair_type_id :: #force_inline proc "contextless" ($Rel: typeid, tgt: Entity) -> QueryTermInput {
+    return { pair_type_id(Rel, tgt), .Without }
+}
+
+@(private="file", require_results)
+without_pair_id_type :: #force_inline proc "contextless" (rel: Entity, $Tgt: typeid) -> QueryTermInput {
+    return { pair_id_type(rel, Tgt), .Without }
 }
 
 @private
@@ -158,7 +205,7 @@ match_query :: proc(query: ^Query, arch: ^Archetype) -> bool {
 	return true
 }
 
-@private
+@(private="file")
 hash_query_terms :: proc(terms: []QueryTerm) -> u64 {
     slice.sort_by(terms, proc(i, j: QueryTerm) -> bool {
         return i.id < j.id

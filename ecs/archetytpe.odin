@@ -18,10 +18,27 @@ Archetype :: struct {
     edges:    map[Entity]ArchetypeEdge,
 }
 
-get_view :: proc(world: ^World, arch: ^Archetype, $T: typeid) -> []T {
+get_view :: proc {
+    get_view_type,
+    get_view_id,
+    get_view_pair,
+}
+
+get_archetypes :: proc {
+    get_archetypes_type,
+    get_archetypes_id,
+    get_archetypes_pair,
+    get_archetypes_pair_type_type,
+    get_archetypes_pair_id_id,
+    get_archetypes_pair_type_id,
+    get_archetypes_pair_id_type,
+}
+
+@(private="file")
+get_view_id :: proc(world: ^World, arch: ^Archetype, id: Entity, $T: typeid) -> []T {
     if arch.len == 0 do return nil
 
-    idx, found := slice.binary_search(arch.types, get_component_id(world, T))
+    idx, found := slice.binary_search(arch.types, id)
     if !found {
         return nil
     }
@@ -30,18 +47,23 @@ get_view :: proc(world: ^World, arch: ^Archetype, $T: typeid) -> []T {
     return ([^]T)(raw_bytes)[:arch.len]
 }
 
-get_archetypes :: proc {
-    get_archetypes_type,
-    get_archetypes_id,
-    get_archetypes_pair,
+@(private="file")
+get_view_type :: #force_inline proc(world: ^World, arch: ^Archetype, $T: typeid) -> []T {
+    return get_view_id(world, arch, get_component_id(world, T), T)
 }
 
-@private
-get_archetypes_type :: proc(world: ^World, $T: typeid) -> []^Archetype {
+@(private="file")
+get_view_pair :: #force_inline proc(world: ^World, arch: ^Archetype, pair: Pair, $T: typeid) -> []T {
+    return get_view_id(world, arch, pair_id(world, pair), T)
+}
+
+
+@(private="file", require_results)
+get_archetypes_type :: #force_inline proc(world: ^World, $T: typeid) -> []^Archetype {
     return get_archetypes_id(world, get_component_id(world, T))
 }
 
-@private
+@(private="file", require_results)
 get_archetypes_id :: proc(world: ^World, id: Entity) -> []^Archetype {
     if list, ok := world.component_index[id]; ok {
         return list[:]
@@ -49,9 +71,32 @@ get_archetypes_id :: proc(world: ^World, id: Entity) -> []^Archetype {
     return nil
 }
 
-@private
+@(private="file", require_results)
 get_archetypes_pair :: #force_inline proc(world: ^World, p: Pair) -> []^Archetype {
     return get_archetypes_id(world, pair_id(world, p))
+}
+
+@(private="file", require_results)
+get_archetypes_pair_id_id :: #force_inline proc(world: ^World, rel, tgt: Entity) -> []^Archetype {
+    return get_archetypes_id(world, id_make_pair(rel, tgt))
+}
+
+@(private="file", require_results)
+get_archetypes_pair_type_type :: #force_inline proc(world: ^World, $Rel, $Tgt: typeid) -> []^Archetype {
+    return get_archetypes_id(world, id_make_pair(
+        get_component_id(world, Rel),
+        get_component_id(world, Tgt),
+    ))
+}
+
+@(private="file", require_results)
+get_archetypes_pair_type_id :: #force_inline proc(world: ^World, $Rel: typeid, tgt: Entity) -> []^Archetype {
+    return get_archetypes_id(world, id_make_pair(get_component_id(world, Rel), tgt))
+}
+
+@(private="file", require_results)
+get_archetypes_pair_id_type :: #force_inline proc(world: ^World, rel: Entity, $Tgt: typeid) -> []^Archetype {
+    return get_archetypes_id(world, id_make_pair(rel, get_component_id(world, Tgt)))
 }
 
 @private
@@ -178,14 +223,13 @@ get_target_archetype :: proc(world: ^World, current: ^Archetype, id: Entity, is_
         }
     }
 
-    allocator := virtual.arena_allocator(&world.arena)
-
     new_types: [dynamic]Entity
     if current != nil {
-        new_types = slice.to_dynamic(current.types, allocator)
+        new_types = slice.to_dynamic(current.types, context.temp_allocator)
     } else {
-        new_types = make([dynamic]Entity, allocator)
+        new_types = make([dynamic]Entity, context.temp_allocator)
     }
+    defer delete(new_types)
 
     idx := 0
     found := false
@@ -355,7 +399,7 @@ append_entity_to_archetype :: proc(world: ^World, arch: ^Archetype, entity: Enti
     return row
 }
 
-@private
+@(private="file")
 hash_type_ids :: #force_inline proc "contextless" (types: []Entity) -> u64 {
     return hash.fnv64a(slice.to_bytes(types))
 }
